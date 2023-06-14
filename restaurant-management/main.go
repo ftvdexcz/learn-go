@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"restaurant-management/handler"
 )
 
 func main() {
@@ -24,36 +26,13 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	/*
-		createRestaurant := entity.Restaurant{
-			Name: "Nha hang 1",
-			Addr: "Ha Noi",
-		}
+	r := gin.Default()
+	v1 := r.Group("/v1/restaurants")
+	{
+		v1.GET("/", handler.GetRestaurants(db))
+		v1.GET("/:id", handler.GetRestaurant(db))
+		v1.POST("/", handler.CreateRestaurant(db))
+	}
 
-		if err := db.Create(&createRestaurant).Error; err != nil {
-			log.Fatalln(err)
-		}
-	*/
-
-	/*
-		var restaurant entity.Restaurant
-
-		if err := db.Where("id = ?", 1).First(&restaurant).Error; err != nil {
-			log.Fatalln(err)
-		}
-
-		log.Printf("Before update: %v", restaurant)
-
-		restaurant.Name = "Nhà Hàng 1"
-		//restaurant.Addr = "Hà Nội"
-
-		db.Save(&restaurant)
-		log.Printf("After update: %v", restaurant)
-	*/
-
-	/*
-		if err := db.Where("id = ?", 1).Delete(&entity.Restaurant{}).Error; err != nil {
-			log.Fatalln(err)
-		}
-	*/
+	_ = r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
