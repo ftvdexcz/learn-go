@@ -32,6 +32,8 @@ func main() {
 		v1.GET("/", handler.GetRestaurants(db))
 		v1.GET("/:id", handler.GetRestaurant(db))
 		v1.POST("/", handler.CreateRestaurant(db))
+		v1.PATCH("/:id", handler.UpdateRestaurant(db))
+		v1.DELETE("/:id", handler.DeleteRestaurant(db))
 	}
 
 	_ = r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
