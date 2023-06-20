@@ -10,6 +10,15 @@ func (Restaurant) TableName() string {
 	return "restaurants"
 }
 
+type RestaurantCreate struct {
+	Name string `json:"name" gorm:"column:name;"`
+	Addr string `json:"addr" gorm:"column:addr;"`
+}
+
+func (RestaurantCreate) TableName() string {
+	return Restaurant{}.TableName()
+}
+
 type RestaurantUpdate struct {
 	Name *string `json:"name" gorm:"column:name;"`
 	Addr *string `json:"addr" gorm:"column:addr;"`
