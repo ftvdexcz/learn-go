@@ -1,157 +1,126 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-	"restaurant-management/entity"
 	"restaurant-management/model"
-	"strconv"
+	"restaurant-management/model/entity"
+	"restaurant-management/pkg/container"
+	restaurantservice "restaurant-management/service/restaurant"
 )
 
-func CreateRestaurant(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var restaurantBody entity.Restaurant
-
-		if err := c.ShouldBind(&restaurantBody); err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		fmt.Println(restaurantBody)
-		if err := db.Create(&restaurantBody).Error; err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		c.JSON(200, gin.H{
-			"message": "success",
-			"data":    restaurantBody,
-		})
-	}
+type Controller struct {
+	restaurantService restaurantservice.IService `di:"inject"`
 }
 
-func GetRestaurants(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var paging model.Paging
-
-		if err := c.ShouldBind(&paging); err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		fmt.Println(paging.Page, paging.Limit)
-
-		if paging.Page <= 0 {
-			paging.Page = 0
-		}
-
-		if paging.Limit <= 0 {
-			paging.Limit = 5
-		}
-
-		var restaurants []entity.Restaurant
-
-		db.Offset((paging.Page - 1) * paging.Limit).
-			Order("id desc").
-			Limit(paging.Limit).
-			Find(&restaurants)
-
-		c.JSON(200, gin.H{
-			"message": "success",
-			"data":    restaurants,
-		})
-	}
+func New() *Controller {
+	obj := &Controller{}
+	container.Fill(obj)
+	return obj
 }
 
-func GetRestaurant(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var restaurant entity.Restaurant
+func (o Controller) CreateRestaurant(c *gin.Context) {
+	var restaurantBody entity.RestaurantCreate
 
-		id := c.Param("id")
-
-		if err := db.Where("id = ?", id).First(&restaurant).Error; err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		c.JSON(200, gin.H{
-			"message": "success",
-			"data":    restaurant,
-		})
-	}
-}
-
-func UpdateRestaurant(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(400, gin.H{
-				"message": err.Error(),
-			})
-			return
-		}
-
-		var restaurantUpdate entity.RestaurantUpdate
-
-		if err := c.ShouldBind(&restaurantUpdate); err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		var restaurant entity.Restaurant
-		if err := db.Where("id = ?", id).First(&restaurant).Error; err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request",
-			})
-			return
-		}
-
-		if err := db.Model(&restaurant).Updates(&restaurantUpdate).Error; err != nil {
-			c.JSON(400, gin.H{
-				"message": "bad request 11",
-			})
-			return
-		}
-
-		c.JSON(200, gin.H{
-			"message": "success",
-			"data":    restaurant,
+	if err := c.ShouldBind(&restaurantBody); err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
 		})
 		return
 	}
-}
 
-func DeleteRestaurant(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(400, gin.H{
-				"message": err.Error(),
-			})
-			return
-		}
-
-		if err := db.Where("id = ?", id).Delete(&entity.Restaurant{}).Error; err != nil {
-			c.JSON(400, gin.H{
-				"message": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(204, nil)
+	if err := o.restaurantService.CreateRestaurant(c.Request.Context(), &restaurantBody); err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
 		return
 	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    restaurantBody,
+	})
+}
+
+func (o Controller) GetRestaurants(c *gin.Context) {
+	var paging model.Paging
+
+	if err := c.ShouldBind(&paging); err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	response, err := o.restaurantService.GetRestaurants(c.Request.Context(), &paging)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    response,
+	})
+}
+
+func (o Controller) GetRestaurant(c *gin.Context) {
+	id := c.Param("id")
+
+	response, err := o.restaurantService.GetRestaurantById(c.Request.Context(), id)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    response,
+	})
+}
+
+func (o Controller) UpdateRestaurant(c *gin.Context) {
+	id := c.Param("id")
+
+	var restaurantUpdate entity.RestaurantUpdate
+
+	if err := c.ShouldBind(&restaurantUpdate); err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	updated, err := o.restaurantService.UpdateRestaurant(c.Request.Context(), id, &restaurantUpdate)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    updated,
+	})
+	return
+}
+
+func (o Controller) DeleteRestaurant(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := o.restaurantService.DeleteRestaurantById(c.Request.Context(), id); err != nil {
+		c.JSON(400, gin.H{
+			"message": "bad request",
+		})
+		return
+	}
+
+	c.JSON(204, nil)
+	return
 }
