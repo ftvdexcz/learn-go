@@ -7,6 +7,7 @@ import (
 	pb "grpc-example-2/calculator/calculatorpb"
 	"io"
 	"log"
+	"time"
 )
 
 func main() {
@@ -22,7 +23,8 @@ func main() {
 
 	//callSum(client)
 	//callPrimeNumberDecomposition(client)
-	callAverage(client)
+	//callAverage(client)
+	callFindMax(client)
 }
 
 func callSum(c pb.CalculatorClient) {
@@ -84,4 +86,53 @@ func callAverage(c pb.CalculatorClient) {
 	}
 
 	log.Printf("average: %v", resp)
+}
+
+func callFindMax(c pb.CalculatorClient) {
+	stream, err := c.FindMax(context.Background())
+	if err != nil {
+		log.Fatalf("err when call findmax: %s", err)
+	}
+
+	listReq := []int32{
+		7, 8, 4, -1, 10, 6, 5,
+	}
+
+	waitc := make(chan struct{})
+
+	// go routine using to send requests
+	go func() {
+		for _, num := range listReq {
+			err := stream.Send(&pb.FindMaxRequest{
+				Num: num,
+			})
+			if err != nil {
+				log.Fatalf("err when send request: %s", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+		err := stream.CloseSend()
+		if err != nil {
+			log.Fatalf("err when close: %s", err)
+		}
+	}()
+
+	go func() {
+		for {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				log.Println("EOF ...")
+				break
+			}
+
+			if err != nil {
+				log.Fatalf("err when recv: %s", err)
+			}
+
+			log.Printf("Result: %d\n", resp.Result)
+		}
+		close(waitc)
+	}()
+
+	_ = <-waitc
 }

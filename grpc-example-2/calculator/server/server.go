@@ -42,6 +42,7 @@ func (s *server) Average(stream pb.Calculator_AverageServer) error {
 		}
 		if err != nil {
 			log.Fatalf("err while recv average %v", err)
+			return err
 		}
 	}
 }
@@ -64,6 +65,36 @@ func (s *server) PrimeNumberDecomposition(req *pb.PNDRequest, stream pb.Calculat
 	}
 
 	return nil
+}
+
+func (s *server) FindMax(stream pb.Calculator_FindMaxServer) error {
+	fmt.Println("call: FindMax()")
+	max := int32(0)
+
+	for {
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			log.Println("EOF ...")
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("err while recv FindMax %v", err)
+			return err
+		}
+
+		num := req.Num
+		if num > max {
+			max = num
+		}
+		err = stream.Send(&pb.FindMaxResponse{
+			Result: max,
+		})
+		if err != nil {
+			log.Fatalf("err while send %v", err)
+			return err
+		}
+	}
 }
 
 func main() {
